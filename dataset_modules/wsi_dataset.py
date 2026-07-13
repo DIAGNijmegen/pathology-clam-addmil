@@ -1,3 +1,11 @@
+# Added Wsi_Region_FromCoords: like Wsi_Region, but builds its patch list from an
+# explicit array of (x, y) coordinates instead of walking tissue contours. Used
+# by create_heatmaps_refractored.py when a slide already has a coordinates file
+# from an upstream pipeline (e.g. slide2vec, which does its own tissue
+# segmentation) -- lets that pipeline skip CLAM's tissue segmentation and
+# contour-based patch generation entirely and read patches straight from the
+# given coordinates (see also Wsi_Region_FromCoords's docstring below).
+
 from torchvision import transforms
 import pandas as pd
 import numpy as np
@@ -110,4 +118,46 @@ class Wsi_Region(Dataset):
         if self.custom_downsample > 1:
             patch = patch.resize(self.target_patch_size)
         patch = self.transforms(patch).unsqueeze(0)
-        return patch, coord 
+        return patch, coord
+
+
+class Wsi_Region_FromCoords(Dataset):
+    '''
+    Like Wsi_Region, but reads patches from an explicit list of (x, y) level-0
+    coordinates instead of walking tissue contours. Used when those coordinates
+    were already computed upstream (e.g. by slide2vec) and tissue segmentation/
+    patch generation should be skipped entirely.
+
+    args:
+        wsi_object: instance of WholeSlideImage wrapper over a WSI
+        coords: Nx2 array of (x, y) coordinates (relative to level 0)
+        patch_size: tuple of width, height to read at `level` for each coordinate
+        level: downsample level at which to read patches
+        t: custom torchvision transformation to apply
+        custom_downsample: additional downscale factor to apply after reading
+    '''
+    def __init__(self, wsi_object, coords, patch_size=(256, 256), level=0, t=None, custom_downsample=1):
+        self.wsi = wsi_object.wsi
+        self.coords = np.asarray(coords)
+        self.level = level
+        self.custom_downsample = custom_downsample
+
+        if self.custom_downsample > 1:
+            self.target_patch_size = patch_size
+            self.patch_size = tuple((np.array(patch_size) * custom_downsample).astype(int))
+        else:
+            self.patch_size = tuple(patch_size)
+
+        assert t is not None, 'transformations not provided'
+        self.transforms = t
+
+    def __len__(self):
+        return len(self.coords)
+
+    def __getitem__(self, idx):
+        coord = self.coords[idx]
+        patch = self.wsi.read_region(tuple(coord), self.level, self.patch_size).convert('RGB')
+        if self.custom_downsample > 1:
+            patch = patch.resize(self.target_patch_size)
+        patch = self.transforms(patch).unsqueeze(0)
+        return patch, coord

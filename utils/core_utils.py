@@ -171,6 +171,13 @@ def train(datasets, cur, args):
     print('Done!')
     print_network(model)
 
+    if getattr(args, 'checkpoint_path', None):
+        print('\nLoading checkpoint from {}'.format(args.checkpoint_path))
+        ckpt = torch.load(args.checkpoint_path, map_location=device)
+        ckpt_clean = {key.replace('.module', ''): val for key, val in ckpt.items() if 'instance_loss_fn' not in key}
+        model.load_state_dict(ckpt_clean, strict=True)
+        print('Done!')
+
     print('\nInit optimizer ...', end=' ')
     optimizer = get_optim(model, args)
     print('Done!')

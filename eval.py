@@ -5,14 +5,11 @@ import numpy as np
 import argparse
 import torch
 import torch.nn as nn
-import pdb
 import os
 import pandas as pd
 from utils.utils import *
 from math import floor
-import matplotlib.pyplot as plt
-from dataset_modules.dataset_generic import Generic_WSI_Classification_Dataset, Generic_MIL_Dataset, save_splits
-import h5py
+from dataset_modules.dataset_generic import Generic_WSI_Classification_Dataset, Generic_MIL_Dataset, save_splits, slide2vec_Dataset
 from utils.eval_utils import *
 from sklearn.metrics import f1_score #Added to calculate F1-score
 
@@ -42,7 +39,7 @@ parser.add_argument('--fold', type=int, default=-1, help='single fold to evaluat
 parser.add_argument('--micro_average', action='store_true', default=False, 
                     help='use micro_average instead of macro_avearge for multiclass AUC')
 parser.add_argument('--split', type=str, choices=['train', 'val', 'test', 'all'], default='test')
-parser.add_argument('--task', type=str, choices=['cscc_vs_noncscc', 'task_1_tumor_vs_normal',  'task_2_tumor_subtyping'])
+parser.add_argument('--task', type=str, choices=['cscc_vs_noncscc', 'cscc_vs_noncscc_slide2vec', 'mcscc_slide2vec', 'task_1_tumor_vs_normal',  'task_2_tumor_subtyping'])
 parser.add_argument('--drop_out', type=float, default=0.25, help='dropout')
 parser.add_argument('--embed_dim', type=int, default=1024)
 parser.add_argument('--data_label_csv_path', type=str, default=None,
@@ -104,6 +101,26 @@ elif args.task == 'cscc_vs_noncscc':
                             label_dict = {'non-cscc':0, 'cscc':1},
                             patient_strat=False,
                             ignore=[])
+elif args.task == 'cscc_vs_noncscc_slide2vec':
+    args.n_classes=2
+    dataset = slide2vec_Dataset(csv_path = args.data_label_csv_path,
+                            data_dir= os.path.join(args.data_root_dir, 'slide2vec'),
+                            shuffle = False,
+                            print_info = True,
+                            label_dict = {'non-cscc':0, 'cscc':1},
+                            patient_strat=False,
+                            ignore=[])
+
+elif args.task == 'mcscc_slide2vec':
+    args.n_classes=2
+    dataset = slide2vec_Dataset(csv_path = args.data_label_csv_path,
+                            data_dir= os.path.join(args.data_root_dir, 'slide2vec'),
+                            shuffle = False,
+                            print_info = True,
+                            label_dict = {'control':0, 'case':1},
+                            patient_strat=False,
+                            ignore=[])
+    
 # elif args.task == 'tcga_kidney_cv':
 #     args.n_classes=3
 #     dataset = Generic_MIL_Dataset(csv_path = args.data_label_csv_path,
