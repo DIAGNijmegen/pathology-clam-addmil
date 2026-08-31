@@ -126,7 +126,6 @@ def get_attention_scores(model, features, model_type=None, clam_pred=None):
     """
     Given an already-extracted bag of patch features, return per-instance attention
     scores as an (N, 1) array.
-
     Shared by the whole-slide prediction pass and the heatmap-attention pass -- this
     model-specific branching used to be duplicated independently in
     infer_single_slide() and inside compute_from_patches().
@@ -141,13 +140,18 @@ def get_attention_scores(model, features, model_type=None, clam_pred=None):
             patch_logits = patch_logits * patch_logits.shape[0]
             attention_scores = F.softmax(patch_logits, dim=1).cpu().numpy()[..., clam_pred]
             A = attention_scores.reshape(attention_scores.shape[0], 1)
+            # Casting for save_hdf5
+            patch_logits = patch_logits.detach().cpu().numpy()
+            if patch_logits.ndim == 3 and patch_logits.shape[0] == 1:
+                patch_logits = patch_logits[0]
         else:  # CLAM_SB / CLAM_MB
             A = model(features, attention_only=True)
             if A.size(0) > 1:  # multi-branch: keep the target class's attention row
                 assert clam_pred is not None, 'clam_pred is required to select a CLAM_MB attention branch'
                 A = A[clam_pred]
             A = A.view(-1, 1).cpu().numpy()
-    return A
+            patch_logits = None # TODO: CLAM logits are not returned here
+    return A, patch_logits
 
 
 def predict_bag(model, features, model_type=None, k=1):
@@ -173,19 +177,18 @@ def infer_slide(model, features, model_type=None, k=1):
     The single inference step over a whole assembled bag of features: one model
     forward pass' worth of work yields both the slide-level prediction and the
     per-instance attention map.
-
     This replaces the previous split between infer_single_slide() (which only
     produced the prediction, reading a features.pt that had been separately saved
     and reloaded from disk) and the attention-only logic that used to be
     duplicated inside compute_from_patches().
     """
     Y_hat, ids, probs = predict_bag(model, features, model_type=model_type, k=k)
-    A = get_attention_scores(model, features, model_type=model_type, clam_pred=Y_hat)
-    return Y_hat, ids, probs, A
+    A, patch_logits = get_attention_scores(model, features, model_type=model_type, clam_pred=Y_hat)
+    return Y_hat, ids, probs, A, patch_logits
 
 
 def compute_from_patches(wsi_object, img_transforms, feature_extractor=None, clam_pred=None, model=None,
-                          model_type=None, batch_size=512, attn_save_path=None, ref_scores=None,
+                          model_type=None, batch_size=512, attn_save_path=None, logits_coord_save_path=None, ref_scores=None,
                           feat_save_path=None, k=1, roi_dataset=None, **wsi_kwargs):
     """
     Stream patches from a WSI region and extract their features in batches (batching
@@ -209,7 +212,7 @@ def compute_from_patches(wsi_object, img_transforms, feature_extractor=None, cla
     """
     if roi_dataset is None:
         roi_dataset = Wsi_Region(wsi_object, t=img_transforms, **wsi_kwargs)
-    roi_loader = get_simple_loader(roi_dataset, batch_size=batch_size, num_workers=8)
+    roi_loader = get_simple_loader(roi_dataset, batch_size=batch_size, num_workers=0)
     print('total number of patches to process: ', len(roi_dataset))
     print('number of batches: ', len(roi_loader))
 
@@ -227,18 +230,21 @@ def compute_from_patches(wsi_object, img_transforms, feature_extractor=None, cla
     if feat_save_path is not None:
         save_hdf5(feat_save_path, {'features': features.numpy(), 'coords': coords}, mode='w')
 
-    Y_hat, ids, probs, A = None, None, None, None
+    Y_hat, ids, probs, A, patch_logits = None, None, None, None, None
     if model is not None:
         if clam_pred is None:
-            Y_hat, ids, probs, A = infer_slide(model, features, model_type=model_type, k=k)
+            Y_hat, ids, probs, A, patch_logits = infer_slide(model, features, model_type=model_type, k=k)
         else:
-            A = get_attention_scores(model, features, model_type=model_type, clam_pred=clam_pred)
+            A, patch_logits = get_attention_scores(model, features, model_type=model_type, clam_pred=clam_pred)
 
         if ref_scores is not None:
             for score_idx in range(len(A)):
                 A[score_idx] = score2percentile(A[score_idx], ref_scores)
 
+        if logits_coord_save_path is not None:
+            save_hdf5(logits_coord_save_path, {'patch_logits': patch_logits, 'coords': coords}, mode='w')
+
         if attn_save_path is not None:
             save_hdf5(attn_save_path, {'attention_scores': A, 'coords': coords}, mode='w')
 
-    return features, coords, Y_hat, ids, probs, A
+    return features, coords, Y_hat, ids, probs, A, patch_logits

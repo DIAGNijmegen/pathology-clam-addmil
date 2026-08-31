@@ -181,6 +181,90 @@ class WholeSlideImage(object):
         self.contours_tissue = [self.contours_tissue[i] for i in contour_ids]
         self.holes_tissue = [self.holes_tissue[i] for i in contour_ids]
 
+    def segmentTissueFromCoords(self, coords, patch_size, mask_tile_px=12, close=3,
+                                min_tiles_per_contour=0.25, max_mask_dim=8000):
+        """
+        Derive tissue contours from an explicit set of patch coordinates instead
+        of thresholding the slide image, storing them exactly as segmentTissue()
+        would: self.contours_tissue / self.holes_tissue, in level-0 pixels and
+        OpenCV contour format ((K, 1, 2) int32). This lets a slide whose tiles
+        were produced by an external segmentor be persisted as a standard CLAM
+        `<slide_id>_mask.pkl` (via saveSegmentation) and flow through the rest of
+        the pipeline -- visWSI, visHeatmap / get_seg_mask, process_contour --
+        unchanged.
+
+        Nothing about the incoming grid is assumed (tile size, origin and spacing
+        vary between segmentors, and tiles may abut or overlap): each tile is
+        rasterized as a filled level-0 rectangle into a downscaled binary mask,
+        which is then traced for outer contours and their enclosed holes.
+
+        Args:
+            coords: (N, 2) array of (x, y) tile top-left corners, level-0 pixels.
+            patch_size: scalar or (w, h) tile footprint in level-0 pixels.
+            mask_tile_px: target tile size, in pixels, in the rasterized mask
+                (trades contour fidelity against mask memory).
+            close: side of the square kernel used to close hairline gaps between
+                abutting tiles before tracing (0 disables).
+            min_tiles_per_contour: drop traced regions (and holes) smaller than
+                this many tiles' worth of area.
+            max_mask_dim: hard cap on either rasterized-mask dimension.
+        """
+        coords = np.asarray(coords, dtype=np.int64)
+        if coords.ndim != 2 or coords.shape[1] != 2 or len(coords) == 0:
+            raise ValueError('coords must be a non-empty (N, 2) array of level-0 (x, y) coordinates')
+
+        ps = np.asarray(patch_size, dtype=np.int64).reshape(-1)
+        pw, ph = (int(ps[0]), int(ps[0])) if ps.size == 1 else (int(ps[0]), int(ps[1]))
+        if pw <= 0 or ph <= 0:
+            raise ValueError('patch_size must be positive')
+
+        w0, h0 = self.level_dim[0]
+        scale = min(float(mask_tile_px) / float(max(pw, ph)),
+                    float(max_mask_dim) / float(max(w0, h0)), 1.0)
+        mask_w = int(math.ceil(w0 * scale)) + 1
+        mask_h = int(math.ceil(h0 * scale)) + 1
+        mask = np.zeros((mask_h, mask_w), dtype=np.uint8)
+
+        xa = np.clip(np.floor(coords[:, 0] * scale).astype(np.int64), 0, mask_w)
+        ya = np.clip(np.floor(coords[:, 1] * scale).astype(np.int64), 0, mask_h)
+        xb = np.clip(np.ceil((coords[:, 0] + pw) * scale).astype(np.int64), 0, mask_w)
+        yb = np.clip(np.ceil((coords[:, 1] + ph) * scale).astype(np.int64), 0, mask_h)
+        for x0, y0, x1, y1 in zip(xa, ya, xb, yb):
+            if x1 > x0 and y1 > y0:
+                mask[y0:y1, x0:x1] = 255
+
+        if close > 0:
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((close, close), np.uint8))
+
+        contours, hierarchy = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+
+        tissue, holes = [], []
+        if hierarchy is not None and len(contours) > 0:
+            hierarchy = hierarchy[0]  # rows: [next, prev, first_child, parent]
+            min_area = float(min_tiles_per_contour) * pw * ph * scale * scale
+            for i, cont in enumerate(contours):
+                if hierarchy[i][3] != -1 or cv2.contourArea(cont) < min_area:
+                    continue  # a hole, or a speck below the area floor
+                cont_holes = [contours[j] for j in range(len(contours))
+                              if hierarchy[j][3] == i and cv2.contourArea(contours[j]) >= min_area]
+                tissue.append(cont)
+                holes.append(cont_holes)
+
+        if len(tissue) == 0:
+            # Nothing survived tracing/filtering -- fall back to a single box
+            # around the union of the provided tiles so downstream code still has
+            # a contour to work with.
+            tissue = [np.array([[[int(xa.min()), int(ya.min())]],
+                                [[int(xb.max()), int(ya.min())]],
+                                [[int(xb.max()), int(yb.max())]],
+                                [[int(xa.min()), int(yb.max())]]], dtype=np.int32)]
+            holes = [[]]
+
+        inv_scale = [1.0 / scale, 1.0 / scale]
+        self.contours_tissue = self.scaleContourDim(tissue, inv_scale)
+        self.holes_tissue = self.scaleHolesDim(holes, inv_scale)
+        print('segmentTissueFromCoords: {} tissue contour(s), {} hole(s) from {} coordinates'.format(len(self.contours_tissue), sum(len(h) for h in self.holes_tissue), len(coords)))
+
     def visWSI(self, vis_level=0, color = (0,255,0), hole_color = (0,0,255), annot_color=(255,0,0), 
                     line_thickness=250, max_size=None, top_left=None, bot_right=None, custom_downsample=1, view_slide_only=False,
                     number_contours=False, seg_display=True, annot_display=True):
