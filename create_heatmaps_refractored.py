@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-# Refactor of create_heatmaps.py:
+# Refactor of create_heatmaps.py: 
 #   - `if __name__ == '__main__':` became a proper main(), decomposed into named
 #     functions grouped by concern: data/model loading (build_arg_namespaces,
 #     load_default_params, build_process_stack, load_model_and_encoder),

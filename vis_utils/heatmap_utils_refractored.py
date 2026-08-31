@@ -247,4 +247,4 @@ def compute_from_patches(wsi_object, img_transforms, feature_extractor=None, cla
         if attn_save_path is not None:
             save_hdf5(attn_save_path, {'attention_scores': A, 'coords': coords}, mode='w')
 
-    return features, coords, Y_hat, ids, probs, A, patch_logits
+    return features, coords, Y_hat, ids, probs, A, patch_logits 

@@ -85,7 +85,7 @@ sample_arguments:
   - name: topk_high_attention
     sample: false
     seed: 1
-    k: 10   # save top-k patches
+    k: 10   # save top-k patches 
     mode: topk
 
 

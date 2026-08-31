@@ -818,7 +818,7 @@ class WholeSlideImage(object):
                 
         tissue_mask = tissue_mask.astype(bool)
         print('detected {}/{} of region as tissue'.format(tissue_mask.sum(), tissue_mask.size))
-        return tissue_mask
+        return tissue_mask 
 
 
 
