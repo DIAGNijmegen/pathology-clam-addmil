@@ -37,7 +37,7 @@ cobra-pathology
     ├── ood
 ```
 #### CSCC 
-The CSCC dataset consists of two batches. The batch dated 2016-2020 is accessible via the `ood` directory, whereas the later 2021-2024 batch will be made publicly available upon manuscript acceptance. 
+The CSCC dataset consists of two batches. The batch dated 2016-2020 is accessible via the `ood` directory, whereas the later 2021-2024 batch will be made publicly available during the review process.
 
 ##### Instruction
 1. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
