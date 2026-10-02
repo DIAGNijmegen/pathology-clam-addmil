@@ -2,32 +2,33 @@
 
 ## Status
 
-This repository accompanies a manuscript currently under review. The codebase, documentation and dataset access instructions may be updated during the peer-review and publication process. Additional resources, including the full dataset and reproducibility scripts, will be finalized upon acceptance of the manuscript. 
+This repository accompanies a manuscript currently under review. The codebase, documentation and dataset access instructions may be updated during the peer-review and publication process.
 
 ## About
-This repository integrates [**CLAM**](https://github.com/mahmoodlab/CLAM) with **Additive Multiple Instance Learning [(AddMIL)](https://openreview.net/forum?id=5dHQyEcYDgA)** [2]. It was developed with the intention of future extensions of other ABMIL methods, and to support the study:
+This repository integrates [**CLAM**](https://github.com/mahmoodlab/CLAM) with **Additive Multiple Instance Learning [(AddMIL)](https://openreview.net/forum?id=5dHQyEcYDgA)** [2]. It was developed to support the study:
 
 **Title** 
-: Automated detection of cutaneous squamous cell carcinoma (CSCC) in whole slide images of skin biopsies using weakly-supervised learning approaches
+: Comparing Additive MIL and CLAM for classification and localization of cutaneous squamous cell carcinoma (CSCC) in whole slide images
 
 **Authors**
-: Catherine Chia, Stephan Dooper, Antien Mooyaart, Avital Amir, Marlies Wakkee, and Geert Litjens
+: Catherine Chia, Stephan Dooper, Ivan Slootweg, Antien Mooyaart, Avital Amir, Marlies Wakkee, and Geert Litjens
 
 ## Public datasets
-Two internal datasets are used in this study, and both are hosted on an AWS S3 bucket:
+Two internal datasets are used in this study, and both are hosted on an AWS S3 bucket. The AddMIL and CLAM model weights are hosted on Huggingface. 
 
+#### Whole slide images
 `s3://cobra-pathology/`
 
-#### COBRA
+##### 1. COBRA
 The COBRA dataset is publicly accessible via the `bcc` directory:
 
-##### Instruction
+**Instruction**
 1. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 2. Bucket name: `s3://cobra-pathology/packages/bcc/`
 3. To browse: `aws s3 ls --no-sign-request s3://cobra-pathology/packages/bcc/`
 4. To download: `aws s3 cp --no-sign-request s3://cobra-pathology/packages/bcc/ <destination_path>`
 
-Relevant directory structure
+**Relevant directory structure**
 ```
 cobra-pathology
 └── packages
@@ -36,16 +37,16 @@ cobra-pathology
         ├── images
     ├── ood
 ```
-#### CSCC 
-The CSCC dataset consists of two batches. The batch dated 2016-2020 is accessible via the `ood` directory, whereas the later 2021-2024 batch will be made publicly available during the review process.
+##### 2. CSCC 
+The CSCC dataset consists of two batches. The batch dated 2016-2020 is accessible via the `ood` directory, whereas the later 2021-2024 batch will be made publicly available during the review process. (We are sorting out the AWS branches. Thank you for your patience!)
 
-##### Instruction
+**Instruction**
 1. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 2. Bucket name: `s3://cobra-pathology/packages/ood/`
 3. To browse: `aws s3 ls --no-sign-request s3://cobra-pathology/packages/ood/`
 4. To download: `aws s3 cp --no-sign-request s3://cobra-pathology/packages/ood/ <destination_path>`
 
-Relevant directory structure
+**Relevant directory structure**
 ```
 cobra-pathology
 └── packages
@@ -54,6 +55,10 @@ cobra-pathology
         ├── annotations
         ├── images
 ```
+
+#### AddMIL and CLAM model weights
+The model weights are available on [Huggingface](https://huggingface.co/computational-pathology-group/cscc_models). 
+
 
 ## Citations
 If you use this repository, please cite:
@@ -84,7 +89,7 @@ and CLAM:
 If you use the `CSCC` dataset, please cite:
 ```
 @article{chia2026cscc,
-  title={Automated detection of cutaneous squamous cell carcinoma (CSCC) in whole slide images of skin biopsies using weakly-supervised learning approaches},
+  title={Comparing Additive MIL and CLAM for classification and localization of cutaneous squamous cell carcinoma (CSCC) in whole slide images},
   author={Chia, Catherine et al.},
   year={2026}
 }
