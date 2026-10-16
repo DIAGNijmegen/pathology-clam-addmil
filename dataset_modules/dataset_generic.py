@@ -335,7 +335,7 @@ class Generic_MIL_Dataset(Generic_WSI_Classification_Dataset):
 		if not self.use_h5:
 			if self.data_dir:
 				full_path = os.path.join(data_dir, 'pt_files', '{}.pt'.format(slide_id))
-				features = torch.load(full_path)
+				features = torch.load(full_path).float() # model weights float32 per pytorch default. slide2vec features float16. 
 				return features, label
 
 			else:
@@ -347,7 +347,7 @@ class Generic_MIL_Dataset(Generic_WSI_Classification_Dataset):
 				features = hdf5_file['features'][:]
 				coords = hdf5_file['coords'][:]
 
-			features = torch.from_numpy(features)
+			features = torch.from_numpy(features).float() # model weights float32 per pytorch default. slide2vec features float16. 
 			return features, label, coords
 
 class Generic_Split(Generic_MIL_Dataset):
@@ -390,7 +390,7 @@ class slide2vec_Dataset(Generic_WSI_Classification_Dataset):
 
 			# Load features from .pt file
 			features_path = os.path.join(data_dir, 'features', '{}.pt'.format(slide_id))
-			features = torch.load(features_path)
+			features = torch.load(features_path).float() # model weights float32 per pytorch default. slide2vec features float16. 
 
 			return features, label, coords
 		else:
