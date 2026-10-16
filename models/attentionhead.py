@@ -121,10 +121,8 @@ class AttentionSingleBranch(nn.Module):
     ):
         super().__init__()
 
-        #if size is None:
-        if size_arg == "small":
-            embed_dim = 1024
-            size = (embed_dim, 512, 256) #small in CLAM. #TODO embed_dim is hardcoded to 1024 in this version
+        size_dict = {"small": [embed_dim, 512, 256], "big": [embed_dim, 512, 384]}
+        size = size_dict[size_arg]
 
         self.additive = additive
         self.n_classes = n_classes
@@ -245,11 +243,12 @@ class AttentionMultiBranch(AttentionSingleBranch):
         dropout: float = 0.25,
         n_classes: int = 2,
         additive: bool = False,
+        embed_dim=1024
     ):
         nn.Module.__init__(self)
 
         if size is None:
-            size = (1024, 512, 256)
+            size = (embed_dim, 512, 256)
         self.additive = additive
         self.n_classes = n_classes
 

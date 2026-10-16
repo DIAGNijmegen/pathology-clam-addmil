@@ -201,7 +201,6 @@ def seed_torch(seed=7):
 
 seed_torch(args.seed)
 
-encoding_size = 1024
 settings = {'num_splits': args.k, 
             'k_start': args.k_start,
             'k_end': args.k_end,
