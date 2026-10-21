@@ -267,7 +267,7 @@ elif args.task == 'cscc_vs_noncscc':
 elif args.task == 'cscc_vs_noncscc_slide2vec':
     args.n_classes=2
     dataset = slide2vec_Dataset(csv_path = args.data_label_csv_path,
-                            data_dir= os.path.join(args.data_root_dir, 'slide2vec'),
+                            data_dir= args.data_root_dir,
                             shuffle = False, 
                             seed = args.seed, 
                             print_info = True,
@@ -277,7 +277,7 @@ elif args.task == 'cscc_vs_noncscc_slide2vec':
 elif args.task == 'mcscc_slide2vec':
     args.n_classes=2
     dataset = slide2vec_Dataset(csv_path = args.data_label_csv_path,
-                            data_dir= os.path.join(args.data_root_dir, 'slide2vec'),
+                            data_dir= args.data_root_dir,
                             shuffle = False, 
                             seed = args.seed, 
                             print_info = True,
